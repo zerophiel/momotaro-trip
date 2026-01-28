@@ -66,10 +66,11 @@ This will install the required package:
    run_script.bat
    ```
 
-3. **Get your reports**: Three PDF files will be generated in the same directory:
+3. **Get your reports**: Four PDF files will be generated in the same directory:
    - `laporan_penagihan.pdf` - Detailed billing report per customer
    - `laporan_top_spender.pdf` - Top 5 customers by spending
    - `laporan_top_item.pdf` - Top 5 most popular items
+   - `laporan_total_omzet.pdf` - Total revenue/omzet report
 
 ## 📖 Usage
 
@@ -82,7 +83,7 @@ python generate_reports.py
 The script will:
 1. Read data from `input-file.txt`
 2. Parse items, prices, and customer information
-3. Generate three PDF reports
+3. Generate four PDF reports
 4. Display success messages for each generated report
 
 ### Input File Location
@@ -185,6 +186,27 @@ Shows the top 5 most popular items ranked by total quantity sold:
 - Unit price
 - Total revenue
 
+### 4. Laporan Total Omzet (`laporan_total_omzet.pdf`)
+
+A comprehensive revenue report with:
+- **Summary Section**: 
+  - Total omzet (overall revenue)
+  - Total items sold
+  - Total quantity
+  - Total customers
+- **Detail Section**: 
+  - Complete breakdown of revenue per item
+  - Quantity sold per item
+  - Unit price per item
+  - Total revenue per item
+  - Items sorted by revenue (highest first)
+  - Grand total at the bottom
+
+**Features**:
+- Professional summary table with key metrics
+- Detailed item-by-item revenue breakdown
+- Clear formatting with grand total highlighted
+
 ## ⚙️ Configuration
 
 ### Customizing Output
@@ -204,6 +226,7 @@ INPUT_FILE = 'input-file.txt'
 BILLING_REPORT = 'laporan_penagihan.pdf'
 TOP_SPENDER_REPORT = 'laporan_top_spender.pdf'
 TOP_ITEM_REPORT = 'laporan_top_item.pdf'
+TOTAL_OMZET_REPORT = 'laporan_total_omzet.pdf'
 ```
 
 ## 🤝 Contributing

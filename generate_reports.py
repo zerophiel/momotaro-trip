@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Script untuk generate laporan penagihan, top spender, dan top item dari input-file.txt
+Script untuk generate laporan penagihan, top spender, top item, dan total omzet dari input-file.txt
 
 PRIVACY NOTICE:
 - Script ini memproses data customer termasuk nama dan nomor telepon
@@ -659,6 +659,177 @@ def generate_top_item_report(items, customers, filename):
     print(f"✓ Laporan top item berhasil dibuat: {filename}")
 
 
+def generate_total_omzet_report(items, customers, filename):
+    """Generate PDF laporan total omzet"""
+    doc = SimpleDocTemplate(filename, pagesize=A4)
+    story = []
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=16,
+        textColor=colors.HexColor('#1a1a1a'),
+        spaceAfter=30,
+        alignment=TA_CENTER
+    )
+    
+    # Title
+    story.append(Paragraph("Laporan Total Omzet", title_style))
+    story.append(Spacer(1, 0.5*cm))
+    
+    # Calculate total revenue per item and overall totals
+    item_revenue = defaultdict(int)
+    item_quantity = defaultdict(int)
+    total_omzet = 0
+    total_quantity = 0
+    total_items_sold = 0
+    
+    for item in items:
+        item_name = item['name']
+        item_price = item['price']
+        quantity = 0
+        
+        for customer_entry in item['customers']:
+            if customer_entry['checked']:
+                quantity += 1
+                item_revenue[item_name] += item_price
+                total_omzet += item_price
+                total_quantity += 1
+        
+        if quantity > 0:
+            item_quantity[item_name] = quantity
+            total_items_sold += 1
+    
+    # Summary section
+    summary_style = ParagraphStyle(
+        'Summary',
+        parent=styles['Normal'],
+        fontSize=12,
+        fontName='Helvetica-Bold',
+        spaceAfter=20
+    )
+    
+    story.append(Paragraph("Ringkasan", summary_style))
+    story.append(Spacer(1, 0.2*cm))
+    
+    # Summary table
+    summary_data = [
+        ['Total Omzet', format_currency(total_omzet)],
+        ['Total Item Terjual', f"{total_items_sold} item"],
+        ['Total Quantity', f"{total_quantity} unit"],
+        ['Total Customer', f"{len(customers)} customer"]
+    ]
+    
+    summary_table = Table(summary_data, colWidths=[8*cm, 8*cm])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#ecf0f1')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+        ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+    ]))
+    
+    story.append(summary_table)
+    story.append(Spacer(1, 0.5*cm))
+    
+    # Detail per item section
+    detail_title_style = ParagraphStyle(
+        'DetailTitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        textColor=colors.HexColor('#2c3e50'),
+        spaceAfter=10,
+        spaceBefore=20
+    )
+    
+    story.append(Paragraph("Detail Omzet per Item", detail_title_style))
+    story.append(Spacer(1, 0.3*cm))
+    
+    # Sort items by revenue (descending)
+    sorted_items = sorted(
+        item_revenue.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+    
+    # Table data
+    table_data = [['No', 'Nama Item', 'Quantity', 'Harga Satuan', 'Total Revenue']]
+    
+    for idx, (item_name, revenue) in enumerate(sorted_items, 1):
+        quantity = item_quantity[item_name]
+        # Find unit price
+        unit_price = None
+        for item in items:
+            if item['name'] == item_name:
+                unit_price = item['price']
+                break
+        
+        if unit_price is None:
+            continue
+        
+        table_data.append([
+            str(idx),
+            item_name,
+            str(quantity),
+            format_currency(unit_price),
+            format_currency(revenue)
+        ])
+    
+    # Add grand total row
+    grand_total_style = ParagraphStyle(
+        'GrandTotal',
+        parent=styles['Normal'],
+        fontSize=11,
+        fontName='Helvetica-Bold',
+        alignment=TA_LEFT
+    )
+    grand_total_currency_style = ParagraphStyle(
+        'GrandTotalCurrency',
+        parent=styles['Normal'],
+        fontSize=11,
+        fontName='Helvetica-Bold',
+        alignment=TA_RIGHT
+    )
+    
+    table_data.append([
+        '',
+        Paragraph('TOTAL OMZET', grand_total_style),
+        str(total_quantity),
+        '',
+        Paragraph(format_currency(total_omzet), grand_total_currency_style)
+    ])
+    
+    # Create table
+    table = Table(table_data, colWidths=[1.5*cm, 7*cm, 2.5*cm, 3*cm, 3*cm])
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#34495e')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('ALIGN', (2, 0), (4, -1), 'RIGHT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -2), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTSIZE', (0, 1), (-1, -2), 10),
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, -1), (-1, -1), 11),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#ecf0f1')),
+    ]))
+    
+    story.append(table)
+    doc.build(story)
+    print(f"✓ Laporan total omzet berhasil dibuat: {filename}")
+
+
 def main():
     input_file = 'input-file.txt'
     
@@ -672,6 +843,7 @@ def main():
     generate_billing_report(items, customers, 'laporan_penagihan.pdf')
     generate_top_spender_report(items, customers, 'laporan_top_spender.pdf')
     generate_top_item_report(items, customers, 'laporan_top_item.pdf')
+    generate_total_omzet_report(items, customers, 'laporan_total_omzet.pdf')
     
     print("\n✓ Semua laporan berhasil dibuat!")
 
