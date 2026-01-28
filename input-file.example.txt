@@ -1,0 +1,224 @@
+# Input File Example - Momotaro Trip Sales Report Generator
+# 
+# This file demonstrates all supported formats for the sales report generator.
+# Copy this file to 'input-file.txt' and replace with your actual data.
+#
+# IMPORTANT: Never commit files containing real customer data to the repository.
+# Always use anonymized/masked data for testing and examples.
+
+# ============================================================================
+# ITEM FORMATS - Price Formats Supported
+# ============================================================================
+
+# Format 1: Ribu (rb) - thousands
+Product A 125rb
+Product B 195rb
+Product C 285rb
+
+# Format 2: Juta (jt) - millions
+# Note: 3,4jt = 3.400.000 (comma as decimal separator)
+Expensive Product 3,4jt
+Another Product 1.5jt
+Premium Item 2,8jt
+
+# Format 3: Standard number format with dots
+Standard Product 1.989.000
+Another Standard 2.289.000
+High Value Item 5.399.000
+
+# Format 4: Price in the middle of text (first price found will be used)
+# Example: "Product name 285rb additional info" -> price = 285rb
+Product with price in middle 285rb some additional text here
+Another example 125rb with more text after price
+
+# Format 5: Mixed format (price can appear anywhere)
+Complex Product Name 439rb isi 40 pcs additional info
+Item Description 1.989.000 with more details
+
+# ============================================================================
+# CUSTOMER FORMATS - Checkbox and Numbered List
+# ============================================================================
+
+# Format 1: Checked checkbox [x] - WILL BE BILLED
+Product A 125rb
+- [x] Customer A +62 812-XXXX-XXXX
+- [x] Customer B +62 813-XXXX-XXXX
+
+# Format 2: Unchecked checkbox [ ] or [] - WILL NOT BE BILLED
+Product B 195rb
+- [ ] Customer C +62 814-XXXX-XXXX
+- [] Customer D +62 815-XXXX-XXXX
+
+# Format 3: Numbered list (1., 2., 3., etc.) - WILL NOT BE BILLED
+Product C 285rb
+1. Customer E +62 816-XXXX-XXXX
+2. Customer F +62 817-XXXX-XXXX
+3. Customer G +62 818-XXXX-XXXX
+
+# Format 4: Dash without checkbox - WILL NOT BE BILLED
+Product D 195rb
+- Customer H +62 819-XXXX-XXXX
+
+# ============================================================================
+# PHONE NUMBER FORMATS - All Supported Formats
+# ============================================================================
+
+# Format 1: +62 XXX-XXXX-XXXX (3-4-4 digits)
+Product with phone format 1 125rb
+- [x] Customer I +62 812-3456-7890
+
+# Format 2: +62 XXX-XXXX-XXX (3-4-3 digits)
+Product with phone format 2 195rb
+- [x] Customer J +62 812-2020-366
+
+# Format 3: +62 XXX-XXX-XXX (3-3-3 digits)
+Product with phone format 3 285rb
+- [x] Customer K +62 816-746-610
+- [x] Customer L +62 817-897-889
+
+# Format 4: +62 XX-XXXX-XXXX (2-4-4 digits)
+Product with phone format 4 195rb
+- [x] Customer M +62 81-1234-5678
+
+# Format 5: +62 XXX XXXX XXXX (with spaces instead of dashes)
+Product with phone format 5 125rb
+- [x] Customer N +62 856 5550 0333
+- [x] Customer O +62 81 1234 5678
+
+# Format 6: 08XXXXXXXXXX (without separator, 10-12 digits)
+Product with phone format 6 195rb
+- [x] Customer P 08118686578
+- [x] Customer Q 081234567890
+
+# Format 7: 08XX-XXXX-XXXX (with separator)
+Product with phone format 7 285rb
+- [x] Customer R 0812-3456-7890
+
+# ============================================================================
+# SPECIAL CASES - Edge Cases and Special Handling
+# ============================================================================
+
+# Case 1: Customer with numbers in name (numbers are part of name, not phone)
+Product special case 1 125rb
+- [x] Customer S 889 +62 817-897-889
+- [x] Customer T 920 +62 818-150-920
+
+# Case 2: Customer with "ok" at the end (will be removed automatically)
+Product special case 2 195rb
+- [x] Customer U +62 812-3456-7890 ok
+- [x] Customer V +62 813-4567-8901 Ok
+- [x] Customer W +62 814-5678-9012 OK
+
+# Case 3: Customer with text in parentheses (will be removed automatically)
+Product special case 3 285rb
+- [x] Customer X +62 815-6789-0123 (some note here)
+- [x] Customer Y +62 816-7890-1234 (kalo ga ada ganti yang lain)
+- [x] Customer Z +62 817-8901-2345 (note)ok
+
+# Case 4: Customer without phone number (matched by name only, case-insensitive)
+Product special case 4 195rb
+- [x] Customer Without Phone
+- [x] customer without phone  (same as above, case-insensitive)
+- [x] CUSTOMER WITHOUT PHONE  (same as above)
+
+# Case 5: Repeated customer entries (quantity will be calculated automatically)
+Product special case 5 125rb
+- [x] Customer Repeat +62 812-3456-7890
+- [x] Customer Repeat +62 812-3456-7890
+- [x] Customer Repeat +62 812-3456-7890
+# Result: Customer Repeat will have quantity = 3
+
+# Case 6: Customer with same phone but different name format
+# (will be treated as same customer if phone matches)
+Product special case 6 195rb
+- [x] Customer Same +62 812-3456-7890
+- [x] Customer Same Different Format +62 812-3456-7890
+# Result: Both treated as same customer (phone number is primary key)
+
+# Case 7: Phone number normalization (0 and +62 are equivalent)
+Product special case 7 285rb
+- [x] Customer Normalize 081234567890
+- [x] Customer Normalize +62 812-3456-7890
+# Result: Both treated as same customer (normalized to same phone)
+
+# Case 8: Multiple items with same customer
+Product A 125rb
+- [x] Multi Customer +62 812-3456-7890
+
+Product B 195rb
+- [x] Multi Customer +62 812-3456-7890
+
+Product C 285rb
+- [x] Multi Customer +62 812-3456-7890
+# Result: Multi Customer will appear in billing report with all 3 items
+
+# ============================================================================
+# IGNORED SECTION - "Product REQUEST cek harga"
+# ============================================================================
+# Everything below this line will be IGNORED and NOT included in reports
+
+Product REQUEST cek harga
+
+Requested Product 1
+1. Customer Request +62 812-3456-7890
+
+Requested Product 2 500rb
+- [x] Another Customer Request +62 813-4567-8901
+# Note: Even if marked with [x], items in this section are ignored
+
+# ============================================================================
+# COMPLETE EXAMPLE - Real-world scenario
+# ============================================================================
+
+Sample Product 1 125rb
+- [x] John Doe +62 812-3456-7890
+- [x] Jane Smith +62 813-4567-8901
+- [ ] Bob Wilson +62 814-5678-9012
+1. Alice Brown +62 815-6789-0123
+
+Sample Product 2 195rb
+- [x] John Doe +62 812-3456-7890
+- [x] Charlie Davis 081234567890
+- [x] David Lee +62 816-7890-1234 (preferred color: blue) ok
+
+Premium Product 1.989.000
+- [x] John Doe +62 812-3456-7890
+- [x] Emma Wilson +62 817-8901-2345
+
+Expensive Item 3,4jt
+- [x] John Doe +62 812-3456-7890
+- [x] Frank Miller +62 818-9012-3456
+
+# ============================================================================
+# NOTES FOR CONTRIBUTORS
+# ============================================================================
+#
+# 1. Price Parsing:
+#    - Priority: rb/jt patterns first, then long number format
+#    - First valid price found in line will be used
+#    - Price will be removed from item name automatically
+#
+# 2. Customer Identification:
+#    - Primary: Phone number (normalized: +62 and 0 are equivalent)
+#    - Secondary: Name (case-insensitive) if no phone number
+#    - Same customer = same phone OR (no phone AND same name)
+#
+# 3. Quantity Calculation:
+#    - Each repeated entry for same item = +1 quantity
+#    - Only entries with [x] are counted
+#
+# 4. Phone Number Normalization:
+#    - +62 XXX-XXXX-XXXX and 08XXXXXXXXXX are treated as same
+#    - All phone numbers are normalized internally for comparison
+#    - Display format: +62 XXX-XXXX-XXXX
+#
+# 5. Text Cleaning:
+#    - "ok" at the end is removed (case-insensitive)
+#    - Text in parentheses is removed
+#    - Unicode characters are normalized
+#
+# 6. Special Sections:
+#    - "Product REQUEST cek harga" section is completely ignored
+#    - All items and customers below this line are skipped
+#
+# ============================================================================

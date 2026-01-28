@@ -4,6 +4,9 @@
 # Input files with sensitive data
 input-file.txt
 
+# Example file should be tracked (not ignored)
+# !input-file.example.txt
+
 # Helper scripts (local use only)
 git_push.bat
 FIX_GIT.md
