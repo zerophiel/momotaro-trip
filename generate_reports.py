@@ -78,12 +78,12 @@ def remove_price_from_item_name(text):
 def remove_notes_from_item_name(text):
     """
     Hapus catatan dalam kurung dari nama item.
-    Berdasarkan requirement: "(merah)" di tengah nama item TIDAK dihapus (tetap bagian nama).
+    Berdasarkan requirement: "(warna)" di tengah nama item TIDAK dihapus (tetap bagian nama).
     Hanya hapus kurung yang ada di akhir SETELAH harga.
     
     Strategi: Hapus kurung di akhir HANYA jika ada spasi sebelum kurung (menandakan itu catatan terpisah).
-    Contoh: "Welna tepung karage ori (merah) 109rb" -> setelah hapus harga -> "Welna tepung karage ori (merah)"
-           Tidak dihapus karena (merah) langsung setelah kata tanpa spasi tambahan (bagian nama).
+    Contoh: "Product name (warna) 109rb" -> setelah hapus harga -> "Product name (warna)"
+           Tidak dihapus karena (warna) langsung setelah kata tanpa spasi tambahan (bagian nama).
     
     Contoh: "Product name 125rb (catatan)" -> setelah hapus harga -> "Product name (catatan)"
            Dihapus menjadi "Product name" karena ada spasi sebelum (catatan) di akhir.
@@ -122,7 +122,7 @@ def extract_notes_from_customer_name(text):
     Ekstrak catatan dalam kurung dari nama customer (untuk ditambahkan ke nama item).
     Hanya ekstrak jika customer sudah checked [x].
     Catatan adalah kurung yang BUKAN quantity format (+angka).
-    Contoh: "Customer Name +62... (relaxing + floral)" -> notes = "(relaxing + floral)", cleaned_name = "Customer Name +62..."
+    Contoh: "Customer Name +62 XXX-XXXX-XXXX (catatan tambahan)" -> notes = "(catatan tambahan)", cleaned_name = "Customer Name +62 XXX-XXXX-XXXX"
     Contoh: "Customer Name (+10 box)" -> notes = None (ini quantity, bukan catatan)
     Returns: (notes, cleaned_name) dimana notes adalah string atau None
     """
@@ -373,12 +373,12 @@ def parse_input_file(filename):
                     r'(\+62\s+\d{3}-\d{4}-\d{3})',  # +62 XXX-XXXX-XXX format (3-4-3)
                     r'(\+62\s+\d{3}-\d{3}-\d{3})',  # +62 XXX-XXX-XXX format (3-3-3)
                     r'(\+62\s+\d{2}-\d{4}-\d{4})',  # +62 81-1234-5678 format (2-4-4)
-                    r'(\+62\s+\d{3}\s+\d{4}\s+\d{4})',  # +62 856 5550 0333 format dengan spasi (3-4-4)
+                    r'(\+62\s+\d{3}\s+\d{4}\s+\d{4})',  # +62 XXX XXXX XXXX format dengan spasi (3-4-4)
                     r'(\+62\s+\d{2}\s+\d{4}\s+\d{4})',  # +62 81 1234 5678 format dengan spasi (2-4-4)
                     r'(\+62\s+\d{2,3}[-.\s]\d{3,4}[-.\s]\d{3,4}[-.\s]\d{3,4})',  # +62 dengan separator
                     r'(\+62\s*\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{3,4}[-.\s]?\d{3,4})',  # +62 format umum
                     r'(0\d{2,3}[-.\s]?\d{3,4}[-.\s]?\d{3,4}[-.\s]?\d{3,4})',  # 08 format dengan separator
-                    r'(0\d{10,12})(?=\s|$)',  # 08118686578 format tanpa separator
+                    r'(0\d{10,12})(?=\s|$)',  # 08XXXXXXXXXX format tanpa separator
                 ]
                 
                 phone_match = None
