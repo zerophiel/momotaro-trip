@@ -75,6 +75,80 @@ def remove_price_from_item_name(text):
     return result
 
 
+def remove_notes_from_item_name(text):
+    """
+    Hapus catatan dalam kurung dari nama item.
+    Berdasarkan requirement: "(merah)" di tengah nama item TIDAK dihapus (tetap bagian nama).
+    Hanya hapus kurung yang ada di akhir SETELAH harga.
+    
+    Strategi: Hapus kurung di akhir HANYA jika ada spasi sebelum kurung (menandakan itu catatan terpisah).
+    Contoh: "Welna tepung karage ori (merah) 109rb" -> setelah hapus harga -> "Welna tepung karage ori (merah)"
+           Tidak dihapus karena (merah) langsung setelah kata tanpa spasi tambahan (bagian nama).
+    
+    Contoh: "Product name 125rb (catatan)" -> setelah hapus harga -> "Product name (catatan)"
+           Dihapus menjadi "Product name" karena ada spasi sebelum (catatan) di akhir.
+    
+    Pattern: Hapus kurung di akhir jika ada spasi sebelum kurung (format: "text (notes)")
+    """
+    # Hapus kurung di akhir jika ada spasi sebelum kurung (menandakan catatan terpisah)
+    # Pattern: spasi + kurung di akhir string
+    result = re.sub(r'\s+\([^)]*\)\s*$', '', text).strip()
+    return result
+
+
+def extract_quantity_from_customer_name(text):
+    """
+    Ekstrak quantity dari nama customer jika ada format (+angka) atau (+ angka).
+    Contoh: "Customer Name (+10 box)" -> quantity = 10, cleaned_name = "Customer Name"
+    Contoh: "Customer Name (+ 11 pack)" -> quantity = 11, cleaned_name = "Customer Name"
+    Returns: (quantity, cleaned_name) dimana quantity adalah int atau None jika tidak ditemukan
+    """
+    # Pattern untuk mencari (+angka) atau (+ angka) dengan berbagai unit (box, pack, butir, dll)
+    # Abaikan unit, hanya ambil angka
+    quantity_pattern = r'\(\+\s*(\d+)\s*\w*\)'
+    match = re.search(quantity_pattern, text, re.IGNORECASE)
+    
+    if match:
+        quantity = int(match.group(1))
+        # Hapus pattern dari nama
+        cleaned_name = re.sub(quantity_pattern, '', text, flags=re.IGNORECASE).strip()
+        return quantity, cleaned_name
+    
+    return None, text
+
+
+def extract_notes_from_customer_name(text):
+    """
+    Ekstrak catatan dalam kurung dari nama customer (untuk ditambahkan ke nama item).
+    Hanya ekstrak jika customer sudah checked [x].
+    Catatan adalah kurung yang BUKAN quantity format (+angka).
+    Contoh: "Customer Name +62... (relaxing + floral)" -> notes = "(relaxing + floral)", cleaned_name = "Customer Name +62..."
+    Contoh: "Customer Name (+10 box)" -> notes = None (ini quantity, bukan catatan)
+    Returns: (notes, cleaned_name) dimana notes adalah string atau None
+    """
+    # Cari semua kurung dalam text
+    # Pattern untuk mencari kurung yang bukan quantity format (+angka)
+    notes_pattern = r'\(([^)]+)\)'
+    matches = list(re.finditer(notes_pattern, text))
+    
+    if matches:
+        # Cari kurung yang bukan quantity format
+        for match in reversed(matches):  # Mulai dari yang paling kanan
+            content = match.group(1).strip()
+            # Cek apakah ini quantity format (+angka atau + angka)
+            if not re.match(r'^\+\s*\d+', content, re.IGNORECASE):
+                # Ini adalah catatan, bukan quantity
+                notes = f"({content})"
+                # Hapus kurung ini dari nama
+                before = text[:match.start()].strip()
+                after = text[match.end():].strip()
+                cleaned_name = f"{before} {after}".strip()
+                cleaned_name = re.sub(r'\s+', ' ', cleaned_name).strip()  # Normalize spaces
+                return notes, cleaned_name
+    
+    return None, text
+
+
 def normalize_unicode(text):
     """
     Normalisasi karakter unicode menjadi karakter standar.
@@ -225,6 +299,8 @@ def parse_input_file(filename):
                 
                 # Extract nama item tanpa harga
                 item_name = remove_price_from_item_name(line)
+                # Hapus catatan dalam kurung yang ada setelah harga atau di akhir
+                item_name = remove_notes_from_item_name(item_name)
                 
                 # Buat item baru
                 current_item = {
@@ -261,6 +337,20 @@ def parse_input_file(filename):
                 # Normalisasi unicode sudah dilakukan di awal, tapi pastikan lagi
                 customer_text = normalize_unicode(customer_text)
                 
+                # Ekstrak quantity terlebih dahulu (sebelum menghapus kurung lainnya)
+                quantity, customer_text_temp = extract_quantity_from_customer_name(customer_text)
+                if quantity is None:
+                    quantity = 1  # Default quantity = 1
+                else:
+                    customer_text = customer_text_temp
+                
+                # Ekstrak notes (catatan dalam kurung) untuk ditambahkan ke nama item
+                # Hanya jika customer checked [x]
+                # Notes harus diekstrak SETELAH quantity (karena quantity format juga pakai kurung)
+                notes = None
+                if checked:
+                    notes, customer_text = extract_notes_from_customer_name(customer_text)
+                
                 # Hapus kata "ok" di akhir (case-insensitive) dan teks dalam kurung yang mungkin ada
                 # Urutan penting: 
                 # 1. Hapus "ok" yang ada sebelum kurung
@@ -269,8 +359,11 @@ def parse_input_file(filename):
                 customer_text = re.sub(r'\s+ok\s*\(', ' (', customer_text, flags=re.IGNORECASE).strip()  # Hapus "ok" sebelum kurung
                 customer_text = re.sub(r'\s*\([^)]*\)\s*ok\s*$', '', customer_text, flags=re.IGNORECASE).strip()  # Hapus kurung dan "ok" setelahnya (dengan spasi)
                 customer_text = re.sub(r'\s*\([^)]*\)ok\s*$', '', customer_text, flags=re.IGNORECASE).strip()  # Hapus kurung dan "ok" setelahnya (tanpa spasi)
+                # Hapus kurung yang tersisa (jika masih ada setelah ekstraksi notes dan quantity)
                 customer_text = re.sub(r'\s*\([^)]*\)\s*$', '', customer_text).strip()  # Hapus teks dalam kurung di akhir (jika masih ada)
                 customer_text = re.sub(r'\s+ok\s*$', '', customer_text, flags=re.IGNORECASE).strip()  # Hapus "ok" di akhir
+                # Normalisasi spasi ganda menjadi spasi tunggal
+                customer_text = re.sub(r'\s+', ' ', customer_text).strip()
                 
                 # Extract nama dan nomor telepon
                 # Strategi: cari semua kemungkinan nomor telepon, ambil yang paling kanan (terakhir)
@@ -337,11 +430,13 @@ def parse_input_file(filename):
                             'phone': phone
                         }
                     
-                    # Tambahkan ke item
+                    # Tambahkan ke item dengan quantity dan notes
                     current_item['customers'].append({
                         'name': name,
                         'phone': phone,
-                        'checked': checked
+                        'checked': checked,
+                        'quantity': quantity,
+                        'notes': notes  # Catatan untuk ditambahkan ke nama item di laporan
                     })
         
         # Tambahkan item terakhir
@@ -386,7 +481,7 @@ def generate_billing_report(items, customers, filename):
     story.append(Paragraph("Laporan Penagihan", title_style))
     story.append(Spacer(1, 0.5*cm))
     
-    # Group items by customer
+    # Group items by customer dengan quantity dan notes
     customer_purchases = defaultdict(list)
     
     for item in items:
@@ -396,17 +491,26 @@ def generate_billing_report(items, customers, filename):
                     customer_entry['name'],
                     customer_entry['phone']
                 )
+                # Gunakan quantity dari customer_entry (default 1 jika tidak ada)
+                quantity = customer_entry.get('quantity', 1)
+                # Tambahkan notes ke nama item jika ada
+                item_name = item['name']
+                notes = customer_entry.get('notes')
+                if notes:
+                    item_name = f"{item['name']} {notes}"
+                
                 customer_purchases[customer_key].append({
-                    'item_name': item['name'],
+                    'item_name': item_name,
                     'price': item['price'],
-                    'quantity': 1  # Akan dihitung ulang nanti
+                    'quantity': quantity
                 })
     
-    # Count quantities per customer per item
+    # Count quantities per customer per item (dengan notes)
     customer_items = defaultdict(lambda: defaultdict(int))
     for customer_key, purchases in customer_purchases.items():
         for purchase in purchases:
-            customer_items[customer_key][purchase['item_name']] += 1
+            # Key adalah item_name dengan notes (jika ada)
+            customer_items[customer_key][purchase['item_name']] += purchase['quantity']
     
     # Sort customers alphabetically by name
     sorted_customers = sorted(
@@ -434,7 +538,15 @@ def generate_billing_report(items, customers, filename):
         total = 0
         row_num = 1
         
-        for item_name, quantity in sorted(item_list.items()):
+        for item_name_with_notes, quantity in sorted(item_list.items()):
+            # Extract item name tanpa notes untuk mencari harga
+            # Notes format: "Item Name (notes)" atau "Item Name"
+            item_name = item_name_with_notes
+            # Hapus notes jika ada (format: "Item Name (notes)")
+            notes_match = re.search(r'^(.+?)\s*\([^)]+\)$', item_name_with_notes)
+            if notes_match:
+                item_name = notes_match.group(1).strip()
+            
             # Find price for this item
             item_price = None
             for item in items:
@@ -450,7 +562,7 @@ def generate_billing_report(items, customers, filename):
             
             table_data.append([
                 str(row_num),
-                item_name,
+                item_name_with_notes,  # Gunakan nama dengan notes untuk display
                 str(quantity),
                 format_currency(item_price),
                 format_currency(subtotal)
@@ -511,7 +623,7 @@ def generate_billing_report(items, customers, filename):
         canvas.restoreState()
     
     doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
-    print(f"✓ Laporan penagihan berhasil dibuat: {filename}")
+    print(f"[OK] Laporan penagihan berhasil dibuat: {filename}")
 
 
 def generate_top_spender_report(items, customers, filename):
@@ -537,7 +649,7 @@ def generate_top_spender_report(items, customers, filename):
     customer_totals = defaultdict(int)
     customer_item_counts = defaultdict(lambda: defaultdict(int))
     
-    # Count quantities per customer per item
+    # Count quantities per customer per item (gunakan quantity dari customer_entry)
     for item in items:
         for customer_entry in item['customers']:
             if customer_entry['checked']:
@@ -545,7 +657,8 @@ def generate_top_spender_report(items, customers, filename):
                     customer_entry['name'],
                     customer_entry['phone']
                 )
-                customer_item_counts[customer_key][item['name']] += 1
+                quantity = customer_entry.get('quantity', 1)
+                customer_item_counts[customer_key][item['name']] += quantity
     
     # Calculate totals
     for customer_key, item_counts in customer_item_counts.items():
@@ -592,7 +705,7 @@ def generate_top_spender_report(items, customers, filename):
     
     story.append(table)
     doc.build(story)
-    print(f"✓ Laporan top spender berhasil dibuat: {filename}")
+    print(f"[OK] Laporan top spender berhasil dibuat: {filename}")
 
 
 def generate_top_item_report(items, customers, filename):
@@ -614,13 +727,14 @@ def generate_top_item_report(items, customers, filename):
     story.append(Paragraph("Laporan Top 5 Item", title_style))
     story.append(Spacer(1, 0.5*cm))
     
-    # Calculate total quantity per item
+    # Calculate total quantity per item (gunakan quantity dari customer_entry)
     item_totals = defaultdict(int)
     
     for item in items:
         for customer_entry in item['customers']:
             if customer_entry['checked']:
-                item_totals[item['name']] += 1
+                quantity = customer_entry.get('quantity', 1)
+                item_totals[item['name']] += quantity
     
     # Get top 5
     top_items = sorted(
@@ -656,7 +770,7 @@ def generate_top_item_report(items, customers, filename):
     
     story.append(table)
     doc.build(story)
-    print(f"✓ Laporan top item berhasil dibuat: {filename}")
+    print(f"[OK] Laporan top item berhasil dibuat: {filename}")
 
 
 def generate_total_omzet_report(items, customers, filename):
@@ -692,10 +806,11 @@ def generate_total_omzet_report(items, customers, filename):
         
         for customer_entry in item['customers']:
             if customer_entry['checked']:
-                quantity += 1
-                item_revenue[item_name] += item_price
-                total_omzet += item_price
-                total_quantity += 1
+                qty = customer_entry.get('quantity', 1)
+                quantity += qty
+                item_revenue[item_name] += item_price * qty
+                total_omzet += item_price * qty
+                total_quantity += qty
         
         if quantity > 0:
             item_quantity[item_name] = quantity
@@ -827,7 +942,7 @@ def generate_total_omzet_report(items, customers, filename):
     
     story.append(table)
     doc.build(story)
-    print(f"✓ Laporan total omzet berhasil dibuat: {filename}")
+    print(f"[OK] Laporan total omzet berhasil dibuat: {filename}")
 
 
 def main():
@@ -836,8 +951,8 @@ def main():
     print("Memulai proses parsing file...")
     items, customers = parse_input_file(input_file)
     
-    print(f"✓ Ditemukan {len(items)} item")
-    print(f"✓ Ditemukan {len(customers)} customer")
+    print(f"[OK] Ditemukan {len(items)} item")
+    print(f"[OK] Ditemukan {len(customers)} customer")
     
     print("\nMembuat laporan PDF...")
     generate_billing_report(items, customers, 'laporan_penagihan.pdf')
@@ -845,7 +960,7 @@ def main():
     generate_top_item_report(items, customers, 'laporan_top_item.pdf')
     generate_total_omzet_report(items, customers, 'laporan_total_omzet.pdf')
     
-    print("\n✓ Semua laporan berhasil dibuat!")
+    print("\n[OK] Semua laporan berhasil dibuat!")
 
 
 if __name__ == '__main__':
